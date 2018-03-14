@@ -8,15 +8,19 @@
 //! functions in the POSIX specification. Therefore, we use the system calls directly.
 
 #![feature(linkage, core_intrinsics)]
+#![cfg_attr(target_os = "switch", feature(ptr_internals))]
 #![no_std]
 #![warn(missing_docs)]
 
-#[cfg(not(target_os = "redox"))]
+#[cfg(not(any(target_os = "redox", target_os = "switch")))]
 #[macro_use]
 extern crate sc;
 
 #[cfg(target_os = "redox")]
 extern crate syscall;
+
+#[cfg(target_os = "switch")]
+extern crate megaton_hammer;
 
 pub mod config;
 pub mod thread_destructor;

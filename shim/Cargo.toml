@@ -12,8 +12,12 @@ lto = true
 debug-assertions = false
 codegen-units = 1
 
-[target.'cfg(not(target_os = "redox"))'.dependencies]
+[target.'cfg(not(any(target_os = "switch", target_os = "redox")))'.dependencies]
 sc = "0.2.1"
 
 [target.'cfg(target_os = "redox")'.dependencies]
 redox_syscall = "0.1"
+
+[target.'cfg(target_os = "switch")'.dependencies]
+megaton-hammer = { git = "https://github.com/MegatonHammer/megaton-hammer", path = "../megatonhammer/megaton-hammer" }
+spin = { version = "0.4.6" }

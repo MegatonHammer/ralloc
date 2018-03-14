@@ -43,7 +43,7 @@ pub fn default_oom_handler() -> ! {
 /// Write to the log.
 ///
 /// This points to stderr, but could be changed arbitrarily.
-#[cfg(not(target_os = "redox"))]
+#[cfg(not(any(target_os = "switch", target_os = "redox")))]
 pub fn log(s: &str) -> usize {
     unsafe { syscall!(WRITE, 2, s.as_ptr(), s.len()) }
 }
@@ -54,6 +54,16 @@ pub fn log(s: &str) -> usize {
 #[cfg(target_os = "redox")]
 pub fn log(s: &str) -> usize {
     ::syscall::write(2, s.as_bytes()).unwrap_or(!0)
+}
+
+/// Write to the log.
+///
+/// This points to stderr, but could be changed arbitrarily.
+#[cfg(target_os = "switch")]
+pub fn log(s: &str) -> usize {
+    use core::fmt::Write;
+    let _ = writeln!(::megaton_hammer::loader::Logger, "{}", s);
+    s.len()
 }
 
 /// Canonicalize a fresh allocation.
