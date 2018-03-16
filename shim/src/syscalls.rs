@@ -59,6 +59,11 @@ pub unsafe fn brk(ptr: *const u8) -> *const u8 {
     match ALLOC_STRATEGY.call_once(|| loader::acquire_heap_strategy()) {
         &Some(HeapStrategy::OverrideHeap(heap)) => {
             static HEAP_POS: AtomicUsize = AtomicUsize::new(0);
+            // Avoid overflow panic when ptr < base.
+            if ptr < heap.as_ptr() as *mut u8 {
+                return ((&(*heap.as_ptr())[0] as *const u8 as usize) + HEAP_POS.load(Ordering::Relaxed)) as *const u8
+            }
+
             let new_size = (ptr as usize) - (&(*heap.as_ptr())[0] as *const u8 as usize);
             if new_size < heap.as_ref().len() {
                 // if brk is in bounds
@@ -76,6 +81,11 @@ pub unsafe fn brk(ptr: *const u8) -> *const u8 {
             // TODO: Cache this information
             if ::megaton_hammer::kernel::svc::get_info(&mut base, 4, ::megaton_hammer::kernel::svc::CURRENT_PROCESS, 0) != 0 {
                 return ptr::null();
+            }
+
+            // Avoid overflow panic when ptr < base.
+            if (ptr as u64) < base {
+                return (base + HEAP_POS.load(Ordering::Relaxed) as u64) as *mut u8;
             }
 
             let mut new_addr = ptr::null_mut();
