@@ -46,15 +46,18 @@ pub fn sched_yield() -> usize {
 /// This is the `brk` **syscall**, not the library function.
 #[cfg(target_os = "switch")]
 pub unsafe fn brk(ptr: *const u8) -> *const u8 {
+
+    // This function should not panic, or we'll cause a deadlock!
+
     extern crate spin;
     use megaton_hammer::loader::{self, HeapStrategy};
     use core::sync::atomic::{AtomicUsize, Ordering};
     use core::ptr;
 
-    static ALLOC_STRATEGY : spin::Once<HeapStrategy> = spin::Once::new();
+    static ALLOC_STRATEGY : spin::Once<Option<HeapStrategy>> = spin::Once::new();
 
-    match ALLOC_STRATEGY.call_once(|| loader::acquire_heap_strategy().unwrap()) {
-        &HeapStrategy::OverrideHeap(heap) => {
+    match ALLOC_STRATEGY.call_once(|| loader::acquire_heap_strategy()) {
+        &Some(HeapStrategy::OverrideHeap(heap)) => {
             static HEAP_POS: AtomicUsize = AtomicUsize::new(0);
             let new_size = (ptr as usize) - (&(*heap.as_ptr())[0] as *const u8 as usize);
             if new_size < heap.as_ref().len() {
@@ -65,14 +68,13 @@ pub unsafe fn brk(ptr: *const u8) -> *const u8 {
                 ((&(*heap.as_ptr())[0] as *const u8 as usize) + HEAP_POS.load(Ordering::Relaxed)) as *const u8
             }
         },
-        &HeapStrategy::SetHeapSize => {
+        &Some(HeapStrategy::SetHeapSize) => {
             static HEAP_POS: AtomicUsize = AtomicUsize::new(0);
 
             let mut base = 0;
 
             // TODO: Cache this information
             if ::megaton_hammer::kernel::svc::get_info(&mut base, 4, ::megaton_hammer::kernel::svc::CURRENT_PROCESS, 0) != 0 {
-                // TODO: Panic ?
                 return ptr::null();
             }
 
@@ -84,6 +86,9 @@ pub unsafe fn brk(ptr: *const u8) -> *const u8 {
             }
             HEAP_POS.store(new_size as usize, Ordering::Relaxed);
             return ptr;
+        },
+        &None => {
+            return ptr::null()
         }
     }
 }
