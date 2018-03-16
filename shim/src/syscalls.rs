@@ -66,23 +66,23 @@ pub unsafe fn brk(ptr: *const u8) -> *const u8 {
             }
         },
         &HeapStrategy::SetHeapSize => {
+            static HEAP_POS: AtomicUsize = AtomicUsize::new(0);
+
             let mut base = 0;
-            let mut size = 0;
+
             // TODO: Cache this information
             if ::megaton_hammer::kernel::svc::get_info(&mut base, 4, ::megaton_hammer::kernel::svc::CURRENT_PROCESS, 0) != 0 {
-                // TODO: Panic ?
-                return ptr::null();
-            }
-            if ::megaton_hammer::kernel::svc::get_info(&mut size, 5, ::megaton_hammer::kernel::svc::CURRENT_PROCESS, 0) != 0 {
                 // TODO: Panic ?
                 return ptr::null();
             }
 
             let mut new_addr = ptr::null_mut();
             // TODO: Ensure ptr - base is page-aligned
-            if ::megaton_hammer::kernel::svc::set_heap_size(&mut new_addr, ptr as u32 - base as u32) != 0 {
-                return (base + size) as *mut u8;
+            let new_size = (ptr as u64 - base) as u32;
+            if ::megaton_hammer::kernel::svc::set_heap_size(&mut new_addr, new_size) != 0 {
+                return (base + HEAP_POS.load(Ordering::Relaxed) as u64) as *mut u8;
             }
+            HEAP_POS.store(new_size as usize, Ordering::Relaxed);
             return ptr;
         }
     }
