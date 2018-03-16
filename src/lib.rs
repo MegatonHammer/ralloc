@@ -48,7 +48,7 @@ mod ptr;
 mod sync;
 mod vec;
 
-use alloc::heap::{Alloc, AllocErr, Layout, CannotReallocInPlace};
+use alloc::heap::{Alloc, AllocErr, Layout, Excess, CannotReallocInPlace};
 
 pub use allocator::{alloc, free, realloc, realloc_inplace};
 pub use brk::sbrk;
@@ -90,5 +90,70 @@ unsafe impl<'a> Alloc for &'a Allocator {
     fn usable_size(&self, layout: &Layout) -> (usize, usize) {
         // Yay! It matches exactly.
         (layout.size(), layout.size())
+    }
+}
+
+unsafe impl Alloc for Allocator {
+    #[inline]
+    unsafe fn alloc(&mut self, layout: Layout) -> Result<*mut u8, AllocErr> {
+        (&*self).alloc(layout)
+    }
+
+    #[inline]
+    unsafe fn alloc_zeroed(&mut self, layout: Layout)
+        -> Result<*mut u8, AllocErr>
+    {
+        (&*self).alloc_zeroed(layout)
+    }
+
+    #[inline]
+    unsafe fn dealloc(&mut self, ptr: *mut u8, layout: Layout) {
+        (&*self).dealloc(ptr, layout)
+    }
+
+    #[inline]
+    unsafe fn realloc(&mut self,
+                      ptr: *mut u8,
+                      old_layout: Layout,
+                      new_layout: Layout) -> Result<*mut u8, AllocErr> {
+        (&*self).realloc(ptr, old_layout, new_layout)
+    }
+
+    fn oom(&mut self, err: AllocErr) -> ! {
+        (&*self).oom(err)
+    }
+
+    #[inline]
+    fn usable_size(&self, layout: &Layout) -> (usize, usize) {
+        (&self).usable_size(layout)
+    }
+
+    #[inline]
+    unsafe fn alloc_excess(&mut self, layout: Layout) -> Result<Excess, AllocErr> {
+        (&*self).alloc_excess(layout)
+    }
+
+    #[inline]
+    unsafe fn realloc_excess(&mut self,
+                             ptr: *mut u8,
+                             layout: Layout,
+                             new_layout: Layout) -> Result<Excess, AllocErr> {
+        (&*self).realloc_excess(ptr, layout, new_layout)
+    }
+
+    #[inline]
+    unsafe fn grow_in_place(&mut self,
+                            ptr: *mut u8,
+                            layout: Layout,
+                            new_layout: Layout) -> Result<(), CannotReallocInPlace> {
+        (&*self).grow_in_place(ptr, layout, new_layout)
+    }
+
+    #[inline]
+    unsafe fn shrink_in_place(&mut self,
+                              ptr: *mut u8,
+                              layout: Layout,
+                              new_layout: Layout) -> Result<(), CannotReallocInPlace> {
+        (&*self).shrink_in_place(ptr, layout, new_layout)
     }
 }
