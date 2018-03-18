@@ -89,8 +89,11 @@ pub unsafe fn brk(ptr: *const u8) -> *const u8 {
             }
 
             let mut new_addr = ptr::null_mut();
-            // TODO: Ensure ptr - base is page-aligned
-            let new_size = (ptr as u64 - base) as u32;
+
+            let mut new_size = (ptr as u64 - base) as u32;
+
+            // Align size to 2MB.
+            new_size = if new_size & (0x200000 - 1) == 0 { new_size } else { (new_size + 0x200000) & !(0x200000 - 1) };
             if ::megaton_hammer::kernel::svc::set_heap_size(&mut new_addr, new_size) != 0 {
                 return (base + HEAP_POS.load(Ordering::Relaxed) as u64) as *mut u8;
             }
