@@ -62,7 +62,7 @@ pub fn log(s: &str) -> usize {
 #[cfg(target_os = "switch")]
 pub fn log(s: &str) -> usize {
     use core::fmt::Write;
-    let _ = writeln!(::megaton_hammer::loader::Logger, "{}", s);
+    let _ = write!(::megaton_hammer::loader::Logger, "{}", s);
     s.len()
 }
 
