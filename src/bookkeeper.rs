@@ -249,8 +249,8 @@ impl Bookkeeper {
 
             // Make sure the sum is maintained properly.
             // TODO: It isn't. See https://github.com/redox-os/ralloc/issues/45
-            //assert!(total_bytes == self.total_bytes, "The sum is not equal to the 'total_bytes' \
-            //        field: {} ≠ {}.", total_bytes, self.total_bytes);
+            assert!(total_bytes == self.total_bytes, "The sum is not equal to the 'total_bytes' \
+                    field: {} ≠ {}.", total_bytes, self.total_bytes);
         }
     }
 }
@@ -579,6 +579,7 @@ pub trait Allocator: ops::DerefMut<Target = Bookkeeper> {
                 if ind.start == self.pool.len() {
                     self.push(excessive);
                 } else if !excessive.is_empty() {
+                    self.total_bytes += excessive.size();
                     self.pool[ind.start] = excessive;
                 }
                 // Block will still not be adjacent, due to `excessive` being guaranteed to not be
