@@ -79,7 +79,9 @@ pub unsafe fn brk(ptr: *const u8) -> *const u8 {
             let mut base = 0;
 
             // TODO: Cache this information
-            if ::megaton_hammer::kernel::svc::get_info(&mut base, 4, ::megaton_hammer::kernel::svc::CURRENT_PROCESS, 0) != 0 {
+            let (res, base) = ::megaton_hammer::kernel::svc::get_info(4, ::megaton_hammer::kernel::svc::CURRENT_PROCESS, 0);
+
+            if res != 0 {
                 return ptr::null();
             }
 
@@ -88,13 +90,13 @@ pub unsafe fn brk(ptr: *const u8) -> *const u8 {
                 return (base + HEAP_POS.load(Ordering::Relaxed) as u64) as *mut u8;
             }
 
-            let mut new_addr = ptr::null_mut();
-
             let mut new_size = (ptr as u64 - base) as u32;
 
             // Align size to 2MB.
             let new_size_aligned = if new_size & (0x200000 - 1) == 0 { new_size } else { (new_size + 0x200000) & !(0x200000 - 1) };
-            if ::megaton_hammer::kernel::svc::set_heap_size(&mut new_addr, new_size_aligned) != 0 {
+            let (res, new_addr) = ::megaton_hammer::kernel::svc::set_heap_size(new_size_aligned);
+            if res != 0 {
+                // Error out. Maybe log something here?
                 return (base + HEAP_POS.load(Ordering::Relaxed) as u64) as *mut u8;
             }
             HEAP_POS.store(new_size as usize, Ordering::Relaxed);
