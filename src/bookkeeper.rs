@@ -620,14 +620,23 @@ pub trait Allocator: ops::DerefMut<Target = Bookkeeper> {
         debug_assert!(self.find(&block) == ind.start, "Block is not inserted at the appropriate \
                       index.");
 
+        // Remember block size for the merge.
+        let block_size = block.size();
+
         // Try to merge it with the block to the right.
         if ind.end < self.pool.len() && block.left_to(&self.pool[ind.end]) {
             // Merge the block with the rightmost block in the range.
             block.merge_right(&mut self.remove_at(ind.end))
                 .expect("Unable to merge block right to the block at the end of the range");
 
+            // Remember block_size for the merge
+            let block_size = block.size();
+
             // The merging succeeded. We proceed to try to close in the possible gap.
             if ind.start != 0 && self.pool[ind.start - 1].merge_right(&mut block).is_ok() {
+                // Add the bytes we removed
+                self.total_bytes += block_size;
+
                 // Check consistency.
                 self.check();
 
@@ -635,6 +644,9 @@ pub trait Allocator: ops::DerefMut<Target = Bookkeeper> {
             }
         // Dammit, let's try to merge left.
         } else if ind.start != 0 && self.pool[ind.start - 1].merge_right(&mut block).is_ok() {
+            // Add the bytes we removed
+            self.total_bytes += block_size;
+
             // Check consistency.
             self.check();
 
